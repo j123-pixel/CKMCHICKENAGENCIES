@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Clock - Multiple Time Zones</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .clocks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .clock {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .clock:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .timezone {
+            color: #ffeb3b;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .time {
+            font-size: 2.5em;
+            color: white;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .date {
+            color: #e0e0e0;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .info {
+            color: #e0e0e0;
+            text-align: center;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .time {
+                font-size: 2em;
+            }
+
+            .clocks-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌍 World Clock</h1>
+        <div class="clocks-grid" id="clocksContainer"></div>
+        <div class="controls">
+            <button onclick="add24HourFormat()">Toggle 24H Format</button>
+            <button onclick="addTimezone()">Add Timezone</button>
+            <button onclick="resetClocks()">Reset to Default</button>
+        </div>
+        <div class="info">
+            <p>Click "Add Timezone" to add more time zones to your display</p>
+        </div>
+    </div>
+
+    <script>
+        const defaultTimezones = [
+            { name: 'New York', tz: 'America/New_York' },
+            { name: 'London', tz: 'Europe/London' },
+            { name: 'Tokyo', tz: 'Asia/Tokyo' },
+            { name: 'Sydney', tz: 'Australia/Sydney' },
+            { name: 'Dubai', tz: 'Asia/Dubai' },
+            { name: 'Singapore', tz: 'Asia/Singapore' }
+        ];
+
+        const allTimezones = [
+            'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+            'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Moscow',
+            'Asia/Dubai', 'Asia/Kolkata', 'Asia/Bangkok', 'Asia/Shanghai', 'Asia/Tokyo', 'Asia/Seoul',
+            'Australia/Sydney', 'Australia/Melbourne', 'Australia/Brisbane', 'Pacific/Auckland',
+            'America/Toronto', 'America/Mexico_City', 'America/Sao_Paulo',
+            'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Lagos'
+        ];
+
+        let displayedTimezones = [...defaultTimezones];
+        let use24HourFormat = true;
+
+        function updateClocks() {
+            const container = document.getElementById('clocksContainer');
+            container.innerHTML = '';
+
+            displayedTimezones.forEach((tzObj, index) => {
+                const clockDiv = document.createElement('div');
+                clockDiv.className = 'clock';
+
+                const now = new Date();
+                const timeStr = now.toLocaleString('en-US', {
+                    timeZone: tzObj.tz,
+                    hour: use24HourFormat ? '2-digit' : 'numeric',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: !use24HourFormat
+                });
+
+                const dateStr = now.toLocaleString('en-US', {
+                    timeZone: tzObj.tz,
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+
+                clockDiv.innerHTML = `
+                    <div class="timezone">${tzObj.name}</div>
+                    <div class="time">${timeStr}</div>
+                    <div class="date">${dateStr}</div>
+                    <button onclick="removeTimezone(${index})" style="margin-top: 15px; padding: 8px 15px; font-size: 0.9em; background: rgba(255, 76, 76, 0.7);">Remove</button>
+                `;
+
+                container.appendChild(clockDiv);
+            });
+        }
+
+        function add24HourFormat() {
+            use24HourFormat = !use24HourFormat;
+            updateClocks();
+        }
+
+        function removeTimezone(index) {
+            displayedTimezones.splice(index, 1);
+            if (displayedTimezones.length === 0) {
+                displayedTimezones = [...defaultTimezones];
+            }
+            updateClocks();
+        }
+
+        function addTimezone() {
+            const tzName = prompt('Enter timezone name:', 'UTC');
+            if (!tzName) return;
+
+            const suggestions = allTimezones.filter(tz => 
+                tz.toLowerCase().includes(tzName.toLowerCase())
+            );
+
+            if (suggestions.length === 0) {
+                alert('Timezone not found. Try names like: America/New_York, Europe/London, Asia/Tokyo');
+                return;
+            }
+
+            let selectedTz;
+            if (suggestions.length === 1) {
+                selectedTz = suggestions[0];
+            } else {
+                selectedTz = prompt(`Multiple matches found:\n${suggestions.join('\n')}\n\nEnter exact timezone:`, suggestions[0]);
+            }
+
+            if (selectedTz) {
+                const displayName = tzName.charAt(0).toUpperCase() + tzName.slice(1);
+                displayedTimezones.push({ name: displayName, tz: selectedTz });
+                updateClocks();
+            }
+        }
+
+        function resetClocks() {
+            displayedTimezones = [...defaultTimezones];
+            use24HourFormat = true;
+            updateClocks();
+        }
+
+        // Update clocks every second
+        setInterval(updateClocks, 1000);
+
+        // Initial update
+        updateClocks();
+    </script>
+</body>
+</html>
